@@ -1,0 +1,3 @@
+[console_scripts]
+dagger = dagger.scripts.dagger:main
+splitms = dagger.scripts.split_ms:main

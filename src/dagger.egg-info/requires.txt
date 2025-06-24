@@ -1,0 +1,6 @@
+casatools>=6.7
+casatasks>=6.7
+casadata
+htcondor
+numpy<2.0
+bokeh>=3.7.2

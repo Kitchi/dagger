@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+src/dagger/mshandler.py
+src/dagger.egg-info/PKG-INFO
+src/dagger.egg-info/SOURCES.txt
+src/dagger.egg-info/dependency_links.txt
+src/dagger.egg-info/entry_points.txt
+src/dagger.egg-info/requires.txt
+src/dagger.egg-info/top_level.txt
+src/dagger/scripts/dagger.py
+src/dagger/scripts/split_ms.py
