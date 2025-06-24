@@ -39,9 +39,6 @@ class DAGWriterBase:
 
         os.chmod(script_name, '0755')
 
-        #script_str += "~/soft/micromamba/envs/py312/bin/python /home/srikrishna.sekhar/src/dagger/src/dagger/scripts/split_ms.py " # No newline
-        #script_str += f"{self.args.MS} {self.args.njob} {" ".join([str(spw) for spw in self.args.SPWs])} " # No newline
-        #script_str += "--outdir {self.args.outdir} --clobber_ms {self.args.clobber_ms} --clobber_tar {self.args.clobber_tar}\n"
 
 
     def write_post(self):
@@ -92,14 +89,65 @@ class cubeDagger(DAGWriterBase):
     Write the input files for a cube imaging DAG.
     """
 
-    def write_cube_imaging_submit_file(self, submit_args_dict={}, use_default_dict=True, file_name='', file_mode='w'):
+    def __init__(self, args):
+        """
+        Input dict with all the variables needed to build the DAG and PRE/POST scripts
+        The dict needs to have the following keys : 
+
+        args['MS'] = Input monolithic     parser.add_argument('MS', type=str, help='MS file name')
+        args['njob'] = Number of HTCondor jobs (or DAG nodes, 1 job/node)
+        args['SPWs'] = List of input SPWs to consider in the MS
+        args['DAG'] = Name of the output DAG file
+        args['pre'] = Name of the pre-script for the initial node
+        args['post'] = Name of the post-script for the initial node
+        args['clobber_ms'] = Overwrite output MS if it exists
+        args['clobber_tar'] = Overwrite output tarfile if it exists
+        args['submit_args'] = Lines to put into the submit file formatted as key value pairs. If nothing is provided, will override the defaults
+        """
+
+        # Input command line argument dict
+        self.args = args
+
+    def write_cube_pre_script(self, inp_str='', shebang = '#! /bin/bash', mode = 'w', script_name=''):
+        """
+        A simple wrapper to dump the input string into a bash script,
+        fix the execute permissions.
+
+        The PRE script is typically not run within a container/virtual environment etc.
+
+        Inputs:
+
+        inp_str,str         Correctly formatted string that will get placed
+                            into the PRE script, replacing the default if not blank.
+        shebang             The shebang to put at the top of the script, default : #! /bin/bash
+        mode                Mode to open the file, default 'w'
+        script_name, str    Name of the PRE script file, if not specified is placed into `PRE.script`
+
+        Returns:
+        pre_script_name     Name of the script
+        """
+
+        script_str = ''
+
+        if len(inp_str) > 0:
+            script_str += inp_str
+        else:
+            # Dagger script to split the MS into the correct number of pieces depending on the number of input jobs
+            script_str += "split_ms.py " # No newline
+            script_str += f"{self.args.MS} {self.args.njob} {" ".join([str(spw) for spw in self.args.SPWs])} " # No newline
+            script_str += "--outdir {self.args.outdir} --clobber_ms {self.args.clobber_ms} --clobber_tar {self.args.clobber_tar}\n"
+
+        self.write_pre(script_str, shebang=shebang, mode=mode, script_name=script_name)
+
+
+    def write_cube_imaging_submit_file(self, submit_args_dict={}, use_default_dict=True, script_name='', file_mode='w'):
         """
         Write the primary submit file for the DAG, that runs tclean over the input list of files.
 
         Inputs:
         submit_args_dict, dict      Input dictionary of arguments
         use_default, bool           Use the default dictionary, default=True     
-        file_name, str              Name of the output submit file, default=''
+        script_name, str            Name of the output submit file, default=''
         file_mode, str              File mode to use while opening the submit file, default='w'
 
         Returns:
@@ -145,13 +193,11 @@ class cubeDagger(DAGWriterBase):
         }
 
         # If command line arguments are passed, prefer those over defaults
-        if args.submit_args is not None:
-            import ast
-            submit_args_cmd = ast.literal_eval(args.tclean_args)
+        if submit_args_dict is not None and len(submit_args_dict) > 0:
             if use_default is True:
-                submit_args = submit_args_default | submit_args_cmd
+                submit_args = submit_args_default | submit_args_dict
             else:
-                submit_args = submit_args_cmd
+                submit_args = submit_args_dict
         elif use_default is True:
             submit_args = submit_args_default
         else:
@@ -160,12 +206,11 @@ class cubeDagger(DAGWriterBase):
 
         for key, val in submit_args.items():
             if key == 'unordered_lines':
-                submit_str += f"{str(key)}"
+                submit_str += f"{str(val)}"
+                submit_str += "\n"
             else:
                 submit_str += f"{str(key)} = {str(val)}\n"
 
-        with open(args.DAG, 'w') as fptr:
-            fptr.write(submit_str)
-
+        self.write_job_submit_file(submit_str, script_name=script_name, file_mode=file_mode)
 
 
