@@ -2,6 +2,8 @@
 Handle writing DAGs, submit scripts, etc.
 """
 
+import inspect
+
 class DAGWriterBase:
     def __init__(self):
         pass
@@ -108,6 +110,7 @@ class cubeDagger(DAGWriterBase):
         # Input command line argument dict
         self.args = args
 
+
     def write_cube_pre_script(self, inp_str='', shebang = '#! /bin/bash', mode = 'w', script_name=''):
         """
         A simple wrapper to dump the input string into a bash script,
@@ -138,6 +141,55 @@ class cubeDagger(DAGWriterBase):
             script_str += "--outdir {self.args.outdir} --clobber_ms {self.args.clobber_ms} --clobber_tar {self.args.clobber_tar}\n"
 
         self.write_pre(script_str, shebang=shebang, mode=mode, script_name=script_name)
+
+
+    def inspector(infunc):
+        """
+        Run the input function through Python `inspect`, and return everything
+        except the function signature.
+
+        Inputs:
+        infunc      Input function
+
+        Returns:
+        funcstr     Function lines as a list, except the function signature
+        """
+
+        funcstr = inspect(infunc)
+        funcstr = funcstr.split('\n')[1:]
+
+        return funcstr
+
+
+    # This function will be run through inspect() to turn into a string, 
+    # and written out to a file. It is not meant to be executed
+    def _chunk_chan_ms_into_tar(self, inp_str='', script_name=''):
+        """
+        Write a job script that will chunk an input set of channel MS (.ms or .tar.gz) into
+        larger tar files. This is a bash script.
+
+        Inputs:
+
+        inp_str,str         Correctly formatted string that will get placed
+                            into the script, replacing the default if not blank.
+        script_name, str    Name of the script file, if not specified is placed into `make_input_chunks.sh`
+
+        Returns:
+        script_name     Name of the script
+        """
+
+        script_str = ''
+
+        if len(inp_str) > 0:
+            script_str += inp_str
+        else:
+            # Dagger script to split the MS into the correct number of pieces depending on the number of input jobs
+            script_str += "split_ms.py " # No newline
+            script_str += f"{self.args.MS} {self.args.njob} {" ".join([str(spw) for spw in self.args.SPWs])} " # No newline
+            script_str += "--outdir {self.args.outdir} --clobber_ms {self.args.clobber_ms} --clobber_tar {self.args.clobber_tar}\n"
+
+        self.write_pre(script_str, shebang=shebang, mode=mode, script_name=script_name)
+
 
 
     def write_cube_imaging_submit_file(self, submit_args_dict={}, use_default_dict=True, script_name='', file_mode='w'):
@@ -179,15 +231,15 @@ class cubeDagger(DAGWriterBase):
             '# Pass in command line args - params from tclean_params.htc
             'arguments' = "$(input_data) --jobid $(Process) --gridder $(gridder) --imsize $(imsize) --cell $(cell) --stokes $(stokes) --niter $(niter) --usemask $(usemask) --threshold $(threshold)",
 
-            'transfer_input_files' = $(input_data),
+            'transfer_input_files' = '',
             'should_transfer_files' = YES,
             'when_to_transfer_output'	= ON_EXIT_OR_EVICT,
             'request_cpus' = 1,
             'request_memory' = 50G,
             'request_disk' = 100G,
             'max_retries'	= 2,
-            'log'	= tclean_$(Process).log,
-            'output'	= tclean_$(Process).out,
+            'log'= tclean_$(Process).log,
+            'output'= tclean_$(Process).out,
             'error'	= tclean_$(Process).err,
             'unordered_lines' = '',
         }

@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.INFO,
                 format="%(asctime)s [%(levelname)s] %(message)s",
                 handlers=[logging.FileHandler("write_dag.log"), logging.StreamHandler()])
 
-
 def main():
     parser = argparse.ArgumentParser(description='Generate a DAG and submit it.')
     parser.add_argument('MS', type=str, help='MS file name')
