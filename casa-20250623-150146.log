@@ -1,9 +1,0 @@
-2025-06-23 15:01:47	INFO	::casa	
-2025-06-23 15:01:47	INFO	::casa	The latest version is already installed in /home/srikrishna.sekhar/.casa/data
-2025-06-23 15:01:48	INFO	::casa	measures_update ... acquiring the lock ... 
-2025-06-23 15:01:48	INFO	::casa	  ... finding available measures at www.astron.nl ...
-2025-06-23 15:01:49	INFO	::casa	  ... downloading WSRT_Measures_20250622-160001.ztar from ASTRON server to /home/srikrishna.sekhar/.casa/data ...
-2025-06-23 15:01:52	INFO	::casa	  ... measures data updated at /home/srikrishna.sekhar/.casa/data
-2025-06-23 15:01:52	INFO	::casa	
-2025-06-23 15:01:53	INFO	::casa	Python version 3.12.11
-2025-06-23 15:01:53	INFO	::casa	CASA Version MODULAR 6.7.0.31
