@@ -11,12 +11,9 @@ authors = [
          ]
 description = "Write DAGs for cube imaging on HTCondor"
 dependencies = [
-    'casatools>=6.7',
-    'casatasks>=6.7',
-    'casadata',
     'htcondor',
     'numpy <2.0',
-    'bokeh >= 3.7.2']
+]
 license = {file="LICENSE"}
 requires-python = ">=3.10"
 classifiers = [
