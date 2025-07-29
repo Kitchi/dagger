@@ -289,6 +289,49 @@ class Dagger:
 
         return job
 
+    def add_func_to_layer(
+        self, func: callable, layer_name: str = "", **kwargs
+    ) -> dags.NodeLayer:
+        """
+        Add a function to the DAG as a new layer. This will create a new layer in the DAG.
+        If no layer name is provided, a default name will be generated based on the current number of layers.
+
+        The function will be converted to a HTCondor Submit object, and then added to the DAG as a layer.
+
+        :param func: The function to add to the DAG.
+        :type func: callable
+        :param layer_name: Optional : Name of the layer to create. If not provided,
+                           a default name will be generated based on the current number of layers.
+                           The default format is "layer_{n}", where n is the current number of layers.
+        :type layer_name: str
+        :param kwargs: Additional keyword arguments to pass to the layer creation.
+                       This can include any additional parameters supported by Dagger.dag_layer,
+                       such as `submit_vars`, `parent_layer_name`, etc. as well as any additional
+                       parameters supported by htcondor2.dags.NodeLayer.
+        :type kwargs: dict
+
+        :return: A NodeLayer object representing the new layer in the DAG.
+        :rtype: htcondor2.dags.NodeLayer
+        :raises TypeError: If the input is not a callable function.
+        :example:
+        >>> def my_function(x: int, y: str) -> None:
+        ...     print(f"My function with x={x} and y={y}")
+        >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
+        >>> dag.add_func_to_layer(my_function, layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
+        """
+
+        if not callable(func):
+            raise TypeError("Input must be a callable function.")
+
+        submit_obj = self.func_to_submit_obj(func, **kwargs)
+
+        return self.dag_layer(
+            submit_obj=submit_obj,
+            submit_vars=kwargs.get("vars", [{}]),
+            layer_name=layer_name,
+            **kwargs,
+        )
+
     def write_dag(self, **kwargs) -> None:
         """
         Write the current DAG to a file. This will create a .dag file that can be submitted to HTCondor.
@@ -314,3 +357,4 @@ class Dagger:
 
 
 # TODO : Add the ability to read common attributes from a TOML file or something
+# TODO : Add a @dagger.script(name='name') decorator to automatically create a script object that can be referenced by name
