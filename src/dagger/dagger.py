@@ -289,17 +289,16 @@ class Dagger:
 
         return job
 
-    def add_func_to_layer(
-        self, func: callable, layer_name: str = "", **kwargs
-    ) -> dags.NodeLayer:
+    def add_func_to_layer(self, layer_name: str = "", **kwargs) -> function:
         """
-        Add a function to the DAG as a new layer. This will create a new layer in the DAG.
-        If no layer name is provided, a default name will be generated based on the current number of layers.
+
+        A decorator to add a function to the DAG as a new layer.
+        This is a convenience method that allows you to add a function to the DAG
+        without having to manually create a submit object and layer. It will automatically
+        convert the function to a submit object and add it to the DAG as a layer.
 
         The function will be converted to a HTCondor Submit object, and then added to the DAG as a layer.
 
-        :param func: The function to add to the DAG.
-        :type func: callable
         :param layer_name: Optional : Name of the layer to create. If not provided,
                            a default name will be generated based on the current number of layers.
                            The default format is "layer_{n}", where n is the current number of layers.
@@ -314,23 +313,30 @@ class Dagger:
         :rtype: htcondor2.dags.NodeLayer
         :raises TypeError: If the input is not a callable function.
         :example:
+        >>> from dagger import Dagger
+        >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
+        >>> @dag.add_func_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
         >>> def my_function(x: int, y: str) -> None:
         ...     print(f"My function with x={x} and y={y}")
-        >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
-        >>> dag.add_func_to_layer(my_function, layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
+        >>> my_function(1, "test")  # This will add the function to the DAG
         """
 
-        if not callable(func):
-            raise TypeError("Input must be a callable function.")
+        def decorator(func: callable) -> function:
+            if not callable(func):
+                raise TypeError("Input must be a callable function.")
 
-        submit_obj = self.func_to_submit_obj(func, **kwargs)
+            def wrapper(*args, **kwargs):
+                submit_obj = self.func_to_submit_obj(func, **kwargs)
+                return self.dag_layer(
+                    submit_obj=submit_obj,
+                    submit_vars=kwargs.get("vars", [{}]),
+                    layer_name=layer_name,
+                    **kwargs,
+                )
 
-        return self.dag_layer(
-            submit_obj=submit_obj,
-            submit_vars=kwargs.get("vars", [{}]),
-            layer_name=layer_name,
-            **kwargs,
-        )
+            return wrapper
+
+        return decorator
 
     def write_dag(self, **kwargs) -> None:
         """
