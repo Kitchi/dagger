@@ -98,7 +98,8 @@ class Dagger:
         return self._job_names
 
     def parse_function(
-        self, func: callable, return_as_string: bool = True, return_name: bool = False
+        self, func: callable, return_as_string: bool = True, return_name: bool = False,
+        trim_whitespace: bool = True
     ) -> str | list[str]:
         """
         Parse a Python function and turn it into a list or string
@@ -121,6 +122,9 @@ class Dagger:
         :param return_name: If True, return the function name as well.
                             This is useful if you want to use the function name in the script.
         :type return_name: bool
+        :param trim_whitespace: If True, trim leading whitespace from the function source code.
+        This will not trim _all_ the whitespace, but only the global indentation level.
+        :type trim_whitespace: bool
 
         :return: The function source code as a string or list of strings.
         :rtype: str or list
@@ -137,13 +141,19 @@ class Dagger:
             raise TypeError("Input must be a callable function.")
 
         name = func.__name__
-        signature = inspect.signature(func)
-
-        sigstr = f"{name}{signature}:"
         funcstr = inspect.getsource(func)
         funcstr = funcstr.split("\n")[1:]
 
-        funcstr = [sigstr] + funcstr
+        #signature = inspect.signature(func)
+        #sigstr = f"{name}{signature}:"
+        #funcstr = [sigstr] + funcstr
+
+        if trim_whitespace:
+            # Trim leading whitespace from the function source code
+            # This will not trim _all_ the whitespace, but only the global indentation level
+            # Assume first line is never indented, and use that to determine the indent level
+            indent_level = len(funcstr[0]) - len(funcstr[0].lstrip())
+            funcstr = [line[indent_level:] for line in funcstr]
 
         if return_as_string:
             funcstr = "\n".join(funcstr)
@@ -191,12 +201,17 @@ class Dagger:
 
         if len(py_script_name) == 0:
             py_script_name = os.path.join(self.dag_dir, f"{func.__name__}.py")
+        elif not os.path.isabs(py_script_name):
+            # If the script name is not absolute, make it relative to the dag_dir
+            py_script_name = os.path.join(self.dag_dir, py_script_name)
 
         with open(py_script_name, "w") as f:
             f.write(funcstr)
 
+        # This has to be a relative path to the script, not an absolute path
+        # because HTCondor will look for the script in the current working directory
         submit_dict = {
-            "executable": py_script_name,
+            "executable": os.path.basename(py_script_name),
         }
         submit_dict.update(submit_args)
 
@@ -260,7 +275,8 @@ class Dagger:
         # Check if parent layer isspecified and exists in the DAG
         if parent_layer_name and parent_layer_name not in self._layer_list:
             raise ValueError(
-                f"Parent layer '{parent_layer_name}' does not exist in the DAG."
+                f"Parent layer '{parent_layer_name}' does not exist in the DAG. "
+                "Please define it first before adding any children."
             )
 
         if not layer_name:
@@ -289,7 +305,7 @@ class Dagger:
 
         return job
 
-    def add_func_to_layer(self, layer_name: str = "", **kwargs) -> function:
+    def add_func_to_layer(self, layer_name: str = "", **kwargs) -> callable:
         """
 
         A decorator to add a function to the DAG as a new layer.
@@ -321,7 +337,7 @@ class Dagger:
         >>> my_function(1, "test")  # This will add the function to the DAG
         """
 
-        def decorator(func: callable) -> function:
+        def decorator(func: callable) -> callable:
             if not callable(func):
                 raise TypeError("Input must be a callable function.")
 

@@ -25,10 +25,6 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/Kitchi/dagger"
 
-[project.scripts]
-dagger = "dagger.scripts.dagger:main"
-splitms = "dagger.scripts.split_ms:main"
-
 [tool.setuptools]
 include-package-data = true
 
