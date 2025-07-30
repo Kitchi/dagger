@@ -47,21 +47,26 @@ def my_function():
 if __name__ == __main__':
     dg = Dagger(dag_dir='./path/to/dag_dir', dag_name='amazing_dag')
 
-    # Turn the Python function into a HTCondor Submit file
-    sub_obj = dg.func_to_submit_file(my_function)
+    # These are the variables that are typically common across all jobs
+    # That will be defined within the submit file
+    submit_vars = {
+      'executable' : 'my_function.py',
+      'arguments' : '$(my_input)', # We will defined my_input at the DAG layer stage
+      'request_cpus' : 1,
+      'request_memory' : '1G',
+      'request_disk' : '1G'
+    }
 
-    # Submit vars contains _all_ the other information
-    # that the submit file needs to successfully run on
-    # HTCondor
-    submit_vars = []
+    # Turn the Python function into a HTCondor Submit file
+    sub_obj = dg.func_to_submit_file(my_function, submit_args=submit_vars)
+
+    # This should contain a list of dicts, which are the variables
+    # that vary from job to job. Each element of the list will
+    # create a DAG node at the same layer (sibling nodes)
+    dag_vars = []
     for i in range(10): # Assume 10 jobs in this DAG layer
         submit_vars.append({
           'my_input' : i,
-          'executable' : 'my_function.py',
-          'arguments' : '$(my_input)',
-          'request_cpus' : 1,
-          'request_memory' : '1G',
-          'request_disk' : '1G'
         })
 
     # Add a layer to the DAG
