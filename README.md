@@ -5,7 +5,7 @@
   quality-of-life improvements while generating DAGs
 </div>
 
- <!---- <img src="https://github.com/user-attachments/assets/f652a8bb-908c-4033-967d-b11ac4763991" align='left' width='15%'> ---->
+ <img src="https://i.imgur.com/NAGahA2.png" align='left' width='15%'>
 
 `Dagger` is a fairly thin Python wrapper around the HTCondor Python bindings that simplifies the process of creating Directed Acyclic Graphs (DAGs) for HTCondor jobs. It
 provides a higher-level interface to define job scripts, Submit scripts, and DAG layers and dependencies. 
