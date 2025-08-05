@@ -5,6 +5,7 @@ into their own scripts, and within a DAG framework via HTCondor DAGMAN.
 
 import inspect
 import os
+from typing import Optional
 
 import htcondor2
 from htcondor2 import dags
@@ -166,11 +167,12 @@ class Dagger:
         else:
             return funcstr
 
-    def func_to_submit_obj(
+    def function_to_submit_obj(
         self,
         func: callable,
         py_script_name: str = "",
         submit_vars: dict = {},
+        delimiter: Optional[str] = None,
     ) -> htcondor2.Submit:
         """
         Convert a Python function into a HTCondor Submit object.
@@ -188,6 +190,12 @@ class Dagger:
         :type submit_script_name: str
         :param submit_vars: Additional arguments to include in the submit script.
                             This can include command line arguments, Condor requirements, container paths etc.
+        :type submit_vars: dict
+        :param delimiter: Optional delimiter to use for the function source code. This allows wrapping arbitrary code in
+                            the function source code. If provided, the function source code will be wrapped in the delimiter.
+                            Any arbitrary string can be used as a delimited, but it is recommended to use a string that
+                            is unlikely to appear in the function source code, such as `\"\"\"` or `'\'\'`.
+        :type delimiter: str
 
         :return: HTCondor Submit object
         :rtype: htcondor2.dags.Submit
@@ -201,6 +209,14 @@ class Dagger:
         funcstr, funcname = self.parse_function(
             func, return_as_string=True, return_name=True
         )
+
+        if delimiter is not None:
+            # If a delimiter is provided, we will strip out the first and last instances.
+            # This allows embedding arbitrary code into a Python function
+            funcstr = funcstr.strip()
+            funcstr = funcstr.lstrip(delimiter)
+            funcstr = funcstr.rstrip(delimiter)
+            funcstr = funcstr.strip()
 
         if len(py_script_name) == 0:
             py_script_name = os.path.join(self.dag_dir, f"{func.__name__}.py")
@@ -308,7 +324,7 @@ class Dagger:
 
         return job
 
-    def add_func_to_layer(
+    def add_function_to_layer(
         self,
         func: callable,
         py_script_name: str = "",
@@ -316,11 +332,12 @@ class Dagger:
         layer_name: str = "",
         parent_layer_name: str = "",
         layer_vars: list[dict] = [],
+        delimiter: Optional[str] = None,
         **kwargs,
     ) -> dags.NodeLayer:
         """
         Convert a Python function into a layer in the DAG. This is a convenience method that combines
-        the `func_to_submit_obj` and `dag_layer` methods into one. It will automatically convert the function
+        the `function_to_submit_obj` and `dag_layer` methods into one. It will automatically convert the function
         to a submit object and add it to the DAG as a layer.
 
         :param func: The function to convert.
@@ -345,6 +362,11 @@ class Dagger:
         :param kwargs: Additional keyword arguments to pass to the layer creation.
                        This can include any additional parameters supported by htcondor2.dags.NodeLayer.
         :type kwargs: dict
+        :param delimiter: Optional delimiter to use for the function source code. This allows wrapping arbitrary code in
+                            the function source code. If provided, the function source code will be wrapped in the delimiter.
+                            Any arbitrary string can be used as a delimited, but it is recommended to use a string that
+                            is unlikely to appear in the function source code, such as `\"\"\"` or `'\'\'`.
+        :type delimiter: str
         :raises TypeError: If the input is not a callable function.
 
         :return: A NodeLayer object representing the new layer in the DAG.
@@ -354,7 +376,7 @@ class Dagger:
         >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
         >>> def my_function(x: int, y: str) -> None:
         ...     print(f"My function with x={x} and y={y}")
-        >>> layer = dag.func_to_layer(
+        >>> layer = dag.function_to_layer(
         ...     func=my_function,
         ...     py_script_name="my_function.py",
         ...     submit_vars={"requirements": "Machine == 'my_machine'"},
@@ -367,10 +389,11 @@ class Dagger:
         if not callable(func):
             raise TypeError("Input must be a callable function.")
 
-        submit_obj = self.func_to_submit_obj(
+        submit_obj = self.function_to_submit_obj(
             func=func,
             py_script_name=py_script_name,
             submit_vars=submit_vars,
+            delimiter=delimiter,
         )
 
         return self.dag_layer(
@@ -381,7 +404,7 @@ class Dagger:
             **kwargs,
         )
 
-        # def add_func_to_layer(self, layer_name: str = "", **kwargs) -> callable:
+        # def add_function_to_layer(self, layer_name: str = "", **kwargs) -> callable:
         #    """
 
         #    A decorator to add a function to the DAG as a new layer.
@@ -407,7 +430,7 @@ class Dagger:
         #    :example:
         #    >>> from dagger import Dagger
         #    >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
-        #    >>> @dag.add_func_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
+        #    >>> @dag.add_function_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
         #    >>> def my_function(x: int, y: str) -> None:
         #    ...     print(f"My function with x={x} and y={y}")
         #    >>> my_function(1, "test")  # This will add the function to the DAG
@@ -418,7 +441,7 @@ class Dagger:
         #            raise TypeError("Input must be a callable function.")
 
         #        def wrapper(*args, **kwargs):
-        #            submit_obj = self.func_to_submit_obj(func, **kwargs)
+        #            submit_obj = self.function_to_submit_obj(func, **kwargs)
         #            return self.dag_layer(
         #                submit_obj=submit_obj,
         #                submit_vars=kwargs.get("vars", [{}]),

@@ -67,7 +67,7 @@ if __name__ == __main__':
         })
 
     # Add a the function as a layer to the DAG
-    dg.dag_layer(my_function, submit_vars=submit_vars, layer_name = 'A', layer_vars=layer_vars)
+    dg.add_function_to_layer(my_function, submit_vars=submit_vars, layer_name = 'A', layer_vars=layer_vars)
 
     # Write the DAG and associated files to disk - this will generate
     # the Python script, submit file, DAGMAN file etc.
