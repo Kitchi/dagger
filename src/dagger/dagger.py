@@ -98,8 +98,11 @@ class Dagger:
         return self._job_names
 
     def parse_function(
-        self, func: callable, return_as_string: bool = True, return_name: bool = False,
-        trim_whitespace: bool = True
+        self,
+        func: callable,
+        return_as_string: bool = True,
+        return_name: bool = False,
+        trim_whitespace: bool = True,
     ) -> str | list[str]:
         """
         Parse a Python function and turn it into a list or string
@@ -144,9 +147,9 @@ class Dagger:
         funcstr = inspect.getsource(func)
         funcstr = funcstr.split("\n")[1:]
 
-        #signature = inspect.signature(func)
-        #sigstr = f"{name}{signature}:"
-        #funcstr = [sigstr] + funcstr
+        # signature = inspect.signature(func)
+        # sigstr = f"{name}{signature}:"
+        # funcstr = [sigstr] + funcstr
 
         if trim_whitespace:
             # Trim leading whitespace from the function source code
@@ -304,6 +307,79 @@ class Dagger:
         self._job_names.append(job.name)
 
         return job
+
+    def func_to_layer(
+        self,
+        func: callable,
+        py_script_name: str = "",
+        submit_args: dict = {},
+        layer_name: str = "",
+        parent_layer_name: str = "",
+        layer_vars: list[dict] = [],
+        **kwargs,
+    ) -> dags.NodeLayer:
+        """
+        Convert a Python function into a layer in the DAG. This is a convenience method that combines
+        the `func_to_submit_obj` and `dag_layer` methods into one. It will automatically convert the function
+        to a submit object and add it to the DAG as a layer.
+
+        :param func: The function to convert.
+        :type func: callable
+        :param py_script_name: The name of the Python script to create.
+                               If not provided, it defaults to the function name with a `.py` extension.
+        :type py_script_name: str
+        :param submit_args: Additional arguments to include in the submit script.
+                            This can include command line arguments, Condor requirements, container paths etc.
+        :type submit_args: dict
+        :param layer_name: Optional : Name of the layer to create. If not provided,
+                           a default name will be generated based on the current number of layers.
+                           The default format is "layer_{n}", where n is the current number of layers.
+        :type layer_name: str
+        :param parent_layer_name: Name of the parent layer to link to.
+                                  If provided, this layer will be added as a child of the parent layer.
+        :type parent_layer_name: str
+        :param layer_vars: List of dictionaries representing variables to be used for each job in the layer.
+                           Each dictionary in the list represents a set of variables to be used
+                           for a single job in the layer.
+        :type layer_vars: list[dict]
+        :param kwargs: Additional keyword arguments to pass to the layer creation.
+                       This can include any additional parameters supported by htcondor2.dags.NodeLayer.
+        :type kwargs: dict
+        :raises TypeError: If the input is not a callable function.
+
+        :return: A NodeLayer object representing the new layer in the DAG.
+        :rtype: htcondor2.dags.NodeLayer
+        :example:
+        >>> from dagger import Dagger
+        >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
+        >>> def my_function(x: int, y: str) -> None:
+        ...     print(f"My function with x={x} and y={y}")
+        >>> layer = dag.func_to_layer(
+        ...     func=my_function,
+        ...     py_script_name="my_function.py",
+        ...     submit_args={"requirements": "Machine == 'my_machine'"},
+        ...     layer_name="my_layer",
+        ...     parent_layer_name="parent_layer",
+        ...     layer_vars=[{"x": 1, "y": "test"}, {"x": 2, "y": "example"}]
+        ... )
+        """
+
+        if not callable(func):
+            raise TypeError("Input must be a callable function.")
+
+        submit_obj = self.func_to_submit_obj(
+            func=func,
+            py_script_name=py_script_name,
+            submit_args=submit_args,
+        )
+
+        return self.dag_layer(
+            submit_obj=submit_obj,
+            submit_vars=layer_vars,
+            layer_name=layer_name,
+            parent_layer_name=parent_layer_name,
+            **kwargs,
+        )
 
     def add_func_to_layer(self, layer_name: str = "", **kwargs) -> callable:
         """
