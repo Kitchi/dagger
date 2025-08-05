@@ -57,20 +57,17 @@ if __name__ == __main__':
       'request_disk' : '1G'
     }
 
-    # Turn the Python function into a HTCondor Submit file
-    sub_obj = dg.func_to_submit_file(my_function, submit_args=submit_vars)
-
     # This should contain a list of dicts, which are the variables
     # that vary from job to job. Each element of the list will
     # create a DAG node at the same layer (sibling nodes)
-    dag_vars = []
+    layer_vars = []
     for i in range(10): # Assume 10 jobs in this DAG layer
-        submit_vars.append({
+        layer_vars.append({
           'my_input' : i,
         })
 
-    # Add a layer to the DAG
-    dg.dag_layer(sub_obj, layer_name = 'A', submit_vars=submit_vars)
+    # Add a the function as a layer to the DAG
+    dg.dag_layer(my_function, submit_vars=submit_vars, layer_name = 'A', layer_vars=layer_vars)
 
     # Write the DAG and associated files to disk - this will generate
     # the Python script, submit file, DAGMAN file etc.

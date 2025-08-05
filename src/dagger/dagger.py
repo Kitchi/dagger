@@ -170,7 +170,7 @@ class Dagger:
         self,
         func: callable,
         py_script_name: str = "",
-        submit_args: dict = {},
+        submit_vars: dict = {},
     ) -> htcondor2.Submit:
         """
         Convert a Python function into a HTCondor Submit object.
@@ -186,7 +186,7 @@ class Dagger:
         :param submit_script_name: The name of the submit script to create.
                             If not provided, it defaults to the function name with a `.submit` extension.
         :type submit_script_name: str
-        :param submit_args: Additional arguments to include in the submit script.
+        :param submit_vars: Additional arguments to include in the submit script.
                             This can include command line arguments, Condor requirements, container paths etc.
 
         :return: HTCondor Submit object
@@ -216,7 +216,7 @@ class Dagger:
         submit_dict = {
             "executable": os.path.basename(py_script_name),
         }
-        submit_dict.update(submit_args)
+        submit_dict.update(submit_vars)
 
         submit_obj = htcondor2.Submit(submit_dict)
 
@@ -308,11 +308,11 @@ class Dagger:
 
         return job
 
-    def func_to_layer(
+    def add_func_to_layer(
         self,
         func: callable,
         py_script_name: str = "",
-        submit_args: dict = {},
+        submit_vars: dict = {},
         layer_name: str = "",
         parent_layer_name: str = "",
         layer_vars: list[dict] = [],
@@ -328,9 +328,9 @@ class Dagger:
         :param py_script_name: The name of the Python script to create.
                                If not provided, it defaults to the function name with a `.py` extension.
         :type py_script_name: str
-        :param submit_args: Additional arguments to include in the submit script.
+        :param submit_vars: Additional arguments to include in the submit script.
                             This can include command line arguments, Condor requirements, container paths etc.
-        :type submit_args: dict
+        :type submit_vars: dict
         :param layer_name: Optional : Name of the layer to create. If not provided,
                            a default name will be generated based on the current number of layers.
                            The default format is "layer_{n}", where n is the current number of layers.
@@ -357,7 +357,7 @@ class Dagger:
         >>> layer = dag.func_to_layer(
         ...     func=my_function,
         ...     py_script_name="my_function.py",
-        ...     submit_args={"requirements": "Machine == 'my_machine'"},
+        ...     submit_vars={"requirements": "Machine == 'my_machine'"},
         ...     layer_name="my_layer",
         ...     parent_layer_name="parent_layer",
         ...     layer_vars=[{"x": 1, "y": "test"}, {"x": 2, "y": "example"}]
@@ -370,7 +370,7 @@ class Dagger:
         submit_obj = self.func_to_submit_obj(
             func=func,
             py_script_name=py_script_name,
-            submit_args=submit_args,
+            submit_vars=submit_vars,
         )
 
         return self.dag_layer(
@@ -381,54 +381,54 @@ class Dagger:
             **kwargs,
         )
 
-    def add_func_to_layer(self, layer_name: str = "", **kwargs) -> callable:
-        """
+        # def add_func_to_layer(self, layer_name: str = "", **kwargs) -> callable:
+        #    """
 
-        A decorator to add a function to the DAG as a new layer.
-        This is a convenience method that allows you to add a function to the DAG
-        without having to manually create a submit object and layer. It will automatically
-        convert the function to a submit object and add it to the DAG as a layer.
+        #    A decorator to add a function to the DAG as a new layer.
+        #    This is a convenience method that allows you to add a function to the DAG
+        #    without having to manually create a submit object and layer. It will automatically
+        #    convert the function to a submit object and add it to the DAG as a layer.
 
-        The function will be converted to a HTCondor Submit object, and then added to the DAG as a layer.
+        #    The function will be converted to a HTCondor Submit object, and then added to the DAG as a layer.
 
-        :param layer_name: Optional : Name of the layer to create. If not provided,
-                           a default name will be generated based on the current number of layers.
-                           The default format is "layer_{n}", where n is the current number of layers.
-        :type layer_name: str
-        :param kwargs: Additional keyword arguments to pass to the layer creation.
-                       This can include any additional parameters supported by Dagger.dag_layer,
-                       such as `submit_vars`, `parent_layer_name`, etc. as well as any additional
-                       parameters supported by htcondor2.dags.NodeLayer.
-        :type kwargs: dict
+        #    :param layer_name: Optional : Name of the layer to create. If not provided,
+        #                       a default name will be generated based on the current number of layers.
+        #                       The default format is "layer_{n}", where n is the current number of layers.
+        #    :type layer_name: str
+        #    :param kwargs: Additional keyword arguments to pass to the layer creation.
+        #                   This can include any additional parameters supported by Dagger.dag_layer,
+        #                   such as `submit_vars`, `parent_layer_name`, etc. as well as any additional
+        #                   parameters supported by htcondor2.dags.NodeLayer.
+        #    :type kwargs: dict
 
-        :return: A NodeLayer object representing the new layer in the DAG.
-        :rtype: htcondor2.dags.NodeLayer
-        :raises TypeError: If the input is not a callable function.
-        :example:
-        >>> from dagger import Dagger
-        >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
-        >>> @dag.add_func_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
-        >>> def my_function(x: int, y: str) -> None:
-        ...     print(f"My function with x={x} and y={y}")
-        >>> my_function(1, "test")  # This will add the function to the DAG
-        """
+        #    :return: A NodeLayer object representing the new layer in the DAG.
+        #    :rtype: htcondor2.dags.NodeLayer
+        #    :raises TypeError: If the input is not a callable function.
+        #    :example:
+        #    >>> from dagger import Dagger
+        #    >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
+        #    >>> @dag.add_func_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
+        #    >>> def my_function(x: int, y: str) -> None:
+        #    ...     print(f"My function with x={x} and y={y}")
+        #    >>> my_function(1, "test")  # This will add the function to the DAG
+        #    """
 
-        def decorator(func: callable) -> callable:
-            if not callable(func):
-                raise TypeError("Input must be a callable function.")
+        #    def decorator(func: callable) -> callable:
+        #        if not callable(func):
+        #            raise TypeError("Input must be a callable function.")
 
-            def wrapper(*args, **kwargs):
-                submit_obj = self.func_to_submit_obj(func, **kwargs)
-                return self.dag_layer(
-                    submit_obj=submit_obj,
-                    submit_vars=kwargs.get("vars", [{}]),
-                    layer_name=layer_name,
-                    **kwargs,
-                )
+        #        def wrapper(*args, **kwargs):
+        #            submit_obj = self.func_to_submit_obj(func, **kwargs)
+        #            return self.dag_layer(
+        #                submit_obj=submit_obj,
+        #                submit_vars=kwargs.get("vars", [{}]),
+        #                layer_name=layer_name,
+        #                **kwargs,
+        #            )
 
-            return wrapper
+        #        return wrapper
 
-        return decorator
+        #    return decorator
 
     def write_dag(self, **kwargs) -> None:
         """
