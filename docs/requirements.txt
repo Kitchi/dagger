@@ -6,4 +6,3 @@ sphinxcontrib-jsmath
 sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
 Pallets-Sphinx-Themes
--e ..
