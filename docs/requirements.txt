@@ -1,0 +1,8 @@
+Sphinx
+sphinxcontrib-applehelp
+sphinxcontrib-devhelp
+sphinxcontrib-htmlhelp
+sphinxcontrib-jsmath
+sphinxcontrib-qthelp
+sphinxcontrib-serializinghtml
+Pallets-Sphinx-Themes
