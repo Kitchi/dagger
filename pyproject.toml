@@ -13,6 +13,7 @@ description = "Write DAGs for cube imaging on HTCondor"
 dependencies = [
     'htcondor',
     'numpy <2.0',
+    'sphinx',
 ]
 license = {file="LICENSE"}
 requires-python = ">=3.10"

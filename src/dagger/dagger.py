@@ -127,7 +127,7 @@ class Dagger:
                             This is useful if you want to use the function name in the script.
         :type return_name: bool
         :param trim_whitespace: If True, trim leading whitespace from the function source code.
-        This will not trim _all_ the whitespace, but only the global indentation level.
+                                This will not trim _all_ the whitespace, but only the global indentation level.
         :type trim_whitespace: bool
 
         :return: The function source code as a string or list of strings.
