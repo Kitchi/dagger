@@ -8,4 +8,6 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+   DagBuilderBase
    Dagger
+   Dagcorator
