@@ -3,26 +3,10 @@ API Reference
 
 .. currentmodule:: dagger
 
-DagBuilderBase
---------------
+.. autosummary::
+   :toctree: generated
+   :template: class.rst
 
-.. autoclass:: dagger.DagBuilderBase
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Dagger
-------
-
-.. autoclass:: dagger.Dagger
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Dagcorator
-----------
-
-.. autoclass:: dagger.Dagcorator
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   DagBuilderBase
+   Dagger
+   Dagcorator
