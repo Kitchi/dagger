@@ -11,92 +11,22 @@ import htcondor2
 from htcondor2 import dags
 
 
-class Dagger:
+class DagBuilderBase:
     """
-    Store DAG state, provide methods to wrap Python functions, turn them into submit scripts,
-    and add layers to the DAG, define parent/child relationships, and submit the DAG to HTCondor.
+    Base class for building DAGs. This class contains the core DAG-building
+    functionality without any user-facing concerns like directory management.
+    It provides low-level methods for function parsing, submit object creation,
+    and DAG layer management.
     """
 
-    def __init__(self, dag_dir: str, dag_name: str, overwrite_dag_dir: bool = False):
-        """
-        Initialize the dagger object with a DAG name and directory.
-
-        :param dag_dir: Directory where the DAG files, scripts, and submit files will be stored.
-        :type dag_dir: str
-        :param dag_name: Name of the DAG.
-        :type dag_name: str
-        """
-        self.dag_dir = dag_dir
-        self.dag_name = dag_name
-        self.overwrite_dag_dir = overwrite_dag_dir
-
-        self.dag = dags.DAG()
+    def __init__(self):
+        """Initialize base DAG building state."""
+        self.dag = htcondor2.dags.DAG()
         self._nlayers = 1
         self._submit_functions = {}
         self._layer_list = []
         self._job_list = []
         self._job_names = []
-
-        self._setup()
-
-    def _setup(self):
-        """
-        This method creates the DAG directory if it does not exist and initializes
-        the DAG object with the specified name.
-        """
-        if not os.path.exists(self.dag_dir):
-            os.makedirs(self.dag_dir)
-
-        if self.overwrite_dag_dir:
-            # Clear existing files in the dag_dir if overwrite is enabled
-            for file in os.listdir(self.dag_dir):
-                file_path = os.path.join(self.dag_dir, file)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-
-    @property
-    def submit_functions(self) -> dict:
-        """
-        Return the dictionary of functions that have been submitted to the DAG.
-        This is useful for debugging and checking which functions are part of the DAG.
-
-        :return: Dictionary of submitted functions.
-        :rtype: dict
-        """
-        return self._submit_functions
-
-    @property
-    def layer_list(self) -> list:
-        """
-        Return the list of layers in the DAG. This is useful for debugging and checking
-        the structure of the DAG.
-
-        :return: List of layers in the DAG.
-        :rtype: list
-        """
-        return self._layer_list
-
-    @property
-    def job_list(self) -> list:
-        """
-        Return the list of jobs in the DAG. This is useful for debugging and checking
-        the jobs that have been added to the DAG.
-
-        :return: List of jobs in the DAG.
-        :rtype: list
-        """
-        return self._job_list
-
-    @property
-    def job_names(self) -> list:
-        """
-        Return the list of job names in the DAG. This is useful for debugging and checking
-        the names of the jobs that have been added to the DAG.
-
-        :return: List of job names in the DAG.
-        :rtype: list
-        """
-        return self._job_names
 
     def parse_function(
         self,
@@ -104,7 +34,7 @@ class Dagger:
         return_as_string: bool = True,
         return_name: bool = False,
         trim_whitespace: bool = True,
-    ) -> str | list[str]:
+    ) -> tuple[str | list[str], str]:
         """
         Parse a Python function and turn it into a list or string
         representation. This function uses the Python inspect module to
@@ -170,6 +100,7 @@ class Dagger:
     def function_to_submit_obj(
         self,
         func: callable,
+        dag_dir: str,
         py_script_name: str = "",
         submit_vars: dict = {},
         delimiter: Optional[str] = None,
@@ -219,10 +150,10 @@ class Dagger:
             funcstr = funcstr.strip()
 
         if len(py_script_name) == 0:
-            py_script_name = os.path.join(self.dag_dir, f"{func.__name__}.py")
+            py_script_name = os.path.join(dag_dir, f"{func.__name__}.py")
         elif not os.path.isabs(py_script_name):
             # If the script name is not absolute, make it relative to the dag_dir
-            py_script_name = os.path.join(self.dag_dir, py_script_name)
+            py_script_name = os.path.join(dag_dir, py_script_name)
 
         with open(py_script_name, "w") as f:
             f.write(funcstr)
@@ -303,7 +234,7 @@ class Dagger:
 
         if parent_layer_name:
             idx = self._layer_list.index(parent_layer_name)
-            job = self.job_list[idx].child_layer(
+            job = self._job_list[idx].child_layer(
                 name=layer_name,
                 submit_description=submit_obj,
                 vars=submit_vars,
@@ -323,6 +254,93 @@ class Dagger:
         self._job_names.append(job.name)
 
         return job
+
+
+class Dagger(DagBuilderBase):
+    """
+    Store DAG state, provide methods to wrap Python functions, turn them into submit scripts,
+    and add layers to the DAG, define parent/child relationships, and submit the DAG to HTCondor.
+    """
+
+    def __init__(self, dag_dir: str, dag_name: str, overwrite_dag_dir: bool = False):
+        """
+        Initialize the dagger object with a DAG name and directory.
+
+        :param dag_dir: Directory where the DAG files, scripts, and submit files will be stored.
+        :type dag_dir: str
+        :param dag_name: Name of the DAG.
+        :type dag_name: str
+        :param overwrite_dag_dir: Whether to overwrite existing files in the DAG directory.
+        :type overwrite_dag_dir: bool
+        """
+        super().__init__()  # Initialize base class
+        self.dag_dir = dag_dir
+        self.dag_name = dag_name
+        self.overwrite_dag_dir = overwrite_dag_dir
+        self._setup()
+
+    def _setup(self):
+        """
+        This method creates the DAG directory if it does not exist and initializes
+        the DAG object with the specified name.
+        """
+        if not os.path.exists(self.dag_dir):
+            os.makedirs(self.dag_dir)
+
+        if self.overwrite_dag_dir:
+            # Clear existing files in the dag_dir if overwrite is enabled
+            for file in os.listdir(self.dag_dir):
+                file_path = os.path.join(self.dag_dir, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+
+    @property
+    def submit_functions(self) -> dict:
+        """
+        Return the dictionary of functions that have been submitted to the DAG.
+        This is useful for debugging and checking which functions are part of the DAG.
+
+        :return: Dictionary of submitted functions.
+        :rtype: dict
+        """
+        return self._submit_functions
+
+    @property
+    def layer_list(self) -> list:
+        """
+        Return the list of layers in the DAG. This is useful for debugging and checking
+        the structure of the DAG.
+
+        :return: List of layers in the DAG.
+        :rtype: list
+        """
+        return self._layer_list
+
+    @property
+    def job_list(self) -> list:
+        """
+        Return the list of jobs in the DAG. This is useful for debugging and checking
+        the jobs that have been added to the DAG.
+
+        :return: List of jobs in the DAG.
+        :rtype: list
+        """
+        return self._job_list
+
+    @property
+    def job_names(self) -> list:
+        """
+        Return the list of job names in the DAG. This is useful for debugging and checking
+        the names of the jobs that have been added to the DAG.
+
+        :return: List of job names in the DAG.
+        :rtype: list
+        """
+        return self._job_names
+
+    def function_to_submit_obj(self, func: callable, **kwargs) -> htcondor2.Submit:
+        """User-facing wrapper that automatically provides dag_dir."""
+        return super().function_to_submit_obj(func, self.dag_dir, **kwargs)
 
     def add_function_to_layer(
         self,
@@ -389,69 +407,21 @@ class Dagger:
         if not callable(func):
             raise TypeError("Input must be a callable function.")
 
-        submit_obj = self.function_to_submit_obj(
+        submit_obj = super().function_to_submit_obj(
             func=func,
+            dag_dir=self.dag_dir,
             py_script_name=py_script_name,
             submit_vars=submit_vars,
             delimiter=delimiter,
         )
 
-        return self.dag_layer(
+        return super().dag_layer(
             submit_obj=submit_obj,
             submit_vars=layer_vars,
             layer_name=layer_name,
             parent_layer_name=parent_layer_name,
             **kwargs,
         )
-
-        # def add_function_to_layer(self, layer_name: str = "", **kwargs) -> callable:
-        #    """
-
-        #    A decorator to add a function to the DAG as a new layer.
-        #    This is a convenience method that allows you to add a function to the DAG
-        #    without having to manually create a submit object and layer. It will automatically
-        #    convert the function to a submit object and add it to the DAG as a layer.
-
-        #    The function will be converted to a HTCondor Submit object, and then added to the DAG as a layer.
-
-        #    :param layer_name: Optional : Name of the layer to create. If not provided,
-        #                       a default name will be generated based on the current number of layers.
-        #                       The default format is "layer_{n}", where n is the current number of layers.
-        #    :type layer_name: str
-        #    :param kwargs: Additional keyword arguments to pass to the layer creation.
-        #                   This can include any additional parameters supported by Dagger.dag_layer,
-        #                   such as `submit_vars`, `parent_layer_name`, etc. as well as any additional
-        #                   parameters supported by htcondor2.dags.NodeLayer.
-        #    :type kwargs: dict
-
-        #    :return: A NodeLayer object representing the new layer in the DAG.
-        #    :rtype: htcondor2.dags.NodeLayer
-        #    :raises TypeError: If the input is not a callable function.
-        #    :example:
-        #    >>> from dagger import Dagger
-        #    >>> dag = Dagger(dag_dir="my_dag_dir", dag_name="my_dag")
-        #    >>> @dag.add_function_to_layer(layer_name="my_layer", vars=[{"x": 1, "y": "test"}])
-        #    >>> def my_function(x: int, y: str) -> None:
-        #    ...     print(f"My function with x={x} and y={y}")
-        #    >>> my_function(1, "test")  # This will add the function to the DAG
-        #    """
-
-        #    def decorator(func: callable) -> callable:
-        #        if not callable(func):
-        #            raise TypeError("Input must be a callable function.")
-
-        #        def wrapper(*args, **kwargs):
-        #            submit_obj = self.function_to_submit_obj(func, **kwargs)
-        #            return self.dag_layer(
-        #                submit_obj=submit_obj,
-        #                submit_vars=kwargs.get("vars", [{}]),
-        #                layer_name=layer_name,
-        #                **kwargs,
-        #            )
-
-        #        return wrapper
-
-        #    return decorator
 
     def write_dag(self, **kwargs) -> None:
         """
@@ -477,5 +447,176 @@ class Dagger:
         )
 
 
+class Dagcorator(DagBuilderBase):
+    """
+    Decorator-based DAG builder that provides the same functionality as Dagger
+    but allows functions to be added to the DAG using Python decorators.
+
+    Usage:
+        dagcorator = Dagcorator(dag_dir="my_dag", dag_name="workflow")
+
+        @dagcorator.layer(layer_name="step1")
+        def process_data(input_file: str) -> str:
+            # Function implementation
+            return "processed_data.txt"
+
+        @dagcorator.layer(layer_name="step2", parent_layer_name="step1",
+                         layer_vars=[{"input": "data1.txt"}, {"input": "data2.txt"}])
+        def analyze_data(input: str) -> str:
+            # Function implementation
+            return "analysis_results.txt"
+
+        dagcorator.write_dag()
+    """
+
+    def __init__(self, dag_dir: str, dag_name: str, overwrite_dag_dir: bool = False):
+        """
+        Initialize decorator-based DAG builder.
+
+        :param dag_dir: Directory where the DAG files, scripts, and submit files will be stored.
+        :type dag_dir: str
+        :param dag_name: Name of the DAG.
+        :type dag_name: str
+        :param overwrite_dag_dir: Whether to overwrite existing files in the DAG directory.
+        :type overwrite_dag_dir: bool
+        """
+        super().__init__()
+        self.dag_dir = dag_dir
+        self.dag_name = dag_name
+        self.overwrite_dag_dir = overwrite_dag_dir
+        self._setup()
+
+    def _setup(self):
+        """
+        Create the DAG directory if it does not exist and clear existing files if requested.
+        """
+        if not os.path.exists(self.dag_dir):
+            os.makedirs(self.dag_dir)
+
+        if self.overwrite_dag_dir:
+            # Clear existing files in the dag_dir if overwrite is enabled
+            for file in os.listdir(self.dag_dir):
+                file_path = os.path.join(self.dag_dir, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+
+    def layer(
+        self,
+        layer_name: str = "",
+        parent_layer_name: str = "",
+        layer_vars: Optional[list[dict]] = None,
+        py_script_name: str = "",
+        submit_vars: Optional[dict] = None,
+        delimiter: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Decorator to add a function to the DAG as a layer.
+
+        :param layer_name: Name of the layer. If not provided, uses function name.
+        :type layer_name: str
+        :param parent_layer_name: Name of parent layer for dependencies.
+        :type parent_layer_name: str
+        :param layer_vars: List of variable dictionaries for multiple jobs in this layer.
+        :type layer_vars: list[dict]
+        :param py_script_name: Custom name for the Python script file.
+        :type py_script_name: str
+        :param submit_vars: Additional variables for the submit script.
+        :type submit_vars: dict
+        :param delimiter: Optional delimiter for function source code wrapping.
+        :type delimiter: str
+        :param kwargs: Additional arguments for layer creation.
+        :return: Decorator function
+        :rtype: callable
+        """
+
+        def decorator(func: callable):
+            if not callable(func):
+                raise TypeError("Input must be a callable function.")
+
+            # Use provided layer name or default to function name
+            actual_layer_name = layer_name or func.__name__
+
+            # Create submit object using base class method
+            submit_obj = super(Dagcorator, self).function_to_submit_obj(
+                func=func,
+                dag_dir=self.dag_dir,
+                py_script_name=py_script_name,
+                submit_vars=submit_vars or {},
+                delimiter=delimiter,
+            )
+
+            # Create DAG layer using base class method
+            layer_obj = super(Dagcorator, self).dag_layer(
+                submit_obj=submit_obj,
+                submit_vars=layer_vars or [{}],
+                layer_name=actual_layer_name,
+                parent_layer_name=parent_layer_name,
+                **kwargs,
+            )
+
+            # Store the layer object as an attribute of the function
+            func._dag_layer = layer_obj
+
+            # Return the original function so it can still be called normally
+            return func
+
+        return decorator
+
+    @property
+    def submit_functions(self) -> dict:
+        """
+        Return the dictionary of functions that have been submitted to the DAG.
+
+        :return: Dictionary of submitted functions.
+        :rtype: dict
+        """
+        return self._submit_functions
+
+    @property
+    def layer_list(self) -> list:
+        """
+        Return the list of layers in the DAG.
+
+        :return: List of layers in the DAG.
+        :rtype: list
+        """
+        return self._layer_list
+
+    @property
+    def job_list(self) -> list:
+        """
+        Return the list of jobs in the DAG.
+
+        :return: List of jobs in the DAG.
+        :rtype: list
+        """
+        return self._job_list
+
+    @property
+    def job_names(self) -> list:
+        """
+        Return the list of job names in the DAG.
+
+        :return: List of job names in the DAG.
+        :rtype: list
+        """
+        return self._job_names
+
+    def write_dag(self, **kwargs) -> None:
+        """
+        Write the current DAG to a file. This will create a .dag file that can be submitted to HTCondor.
+
+        :param kwargs: Keyword arguments to pass to the DAG writing function.
+        :type kwargs: dict
+        :return: None
+        """
+        dags.write_dag(
+            self.dag,
+            dag_dir=self.dag_dir,
+            dag_file_name=f"{self.dag_name}.dag",
+            **kwargs,
+        )
+
+
 # TODO : Add the ability to read common attributes from a TOML file or something
-# TODO : Add a @dagger.script(name='name') decorator to automatically create a script object that can be referenced by name

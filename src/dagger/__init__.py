@@ -1,1 +1,1 @@
-from .dagger import Dagger
+from .dagger import Dagger, Dagcorator

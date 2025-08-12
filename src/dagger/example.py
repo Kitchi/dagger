@@ -11,7 +11,7 @@ def test_func(a: int, b: float) -> str:
 
 if __name__ == "__main__":
     dag = Dagger(dag_dir="test", dag_name="test_dag")
-    submit_obj = dag.func_to_submit_obj(test_func)
+    submit_obj = dag.function_to_submit_obj(test_func)
     print(dag.submit_functions["test_func"])
     job = dag.dag_layer(
         submit_obj=submit_obj,
